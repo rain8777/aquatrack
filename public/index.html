@@ -1005,17 +1005,17 @@ input,select,textarea{font-family:var(--font);outline:none}
 // Priority: 1) window.AQUATRACK_GAS_URL (from config.js / injected)
 //           2) localStorage (user manually entered)
 //           3) Demo mode
-const GAS_URL = (typeof window !== 'undefined' && window.AQUATRACK_GAS_URL && window.AQUATRACK_GAS_URL !== 'YOUR_GAS_URL_HERE' ? window.AQUATRACK_GAS_URL : null)
+const GAS_URL = (typeof window !== 'undefined' && window.AQUATRACK_GAS_URL && window.AQUATRACK_GAS_URL !== 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec' ? window.AQUATRACK_GAS_URL : null)
   || localStorage.getItem('aquatrack_gas_url')
-  || 'YOUR_GAS_URL_HERE';
+  || 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec';
 
 // ============================================================
 // SUPER ADMIN CONFIG
 // Change these credentials to your own!
 // ============================================================
 const SUPER_ADMIN = {
-  email: 'superadmin@aquatrack.com',
-  password: 'AquaTrack@Admin2024!'
+  email: 'Busiliggilbert@gmail.com',
+  password: 'Pandesal1!'
 };
 
 // ============================================================
@@ -1040,23 +1040,44 @@ let chatInterval = null;
 async function api(action, body = {}) {
   const token = localStorage.getItem('aquatrack_token');
   try {
-    if (!GAS_URL || GAS_URL === 'YOUR_GAS_URL_HERE') {
+    if (!GAS_URL || GAS_URL === 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec') {
       return mockAPI(action, body);
     }
-    const payload = encodeURIComponent(JSON.stringify({action, token, ...body}));
-    const url = GAS_URL + '?payload=' + payload;
-    const res = await fetch(url, {redirect: 'follow'});
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const payload = JSON.stringify({ action, token, ...body });
+
+    // Use fetch with no-cors is not possible for reading response.
+    // Google Apps Script requires a GET with payload param OR a POST.
+    // We use POST with Content-Type text/plain to avoid CORS preflight.
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: payload,
+      redirect: 'follow'
+    });
+
     const text = await res.text();
     try {
       return JSON.parse(text);
     } catch(e) {
-      console.error('GAS response not JSON:', text.substring(0, 200));
-      return {success: false, error: 'Invalid response from server. Please redeploy your Apps Script.'};
+      console.error('GAS response not JSON:', text.substring(0, 300));
+      // Fallback: try GET method
+      return await apiGET(action, body, token);
     }
   } catch(e) {
-    console.error('API error:', e);
-    return {success: false, error: 'Connection failed. Check your GAS URL in config.js and make sure it is deployed as Anyone can access.'};
+    console.error('POST failed, trying GET:', e.message);
+    return await apiGET(action, body, token);
+  }
+}
+
+async function apiGET(action, body, token) {
+  try {
+    const payload = encodeURIComponent(JSON.stringify({ action, token, ...body }));
+    const res = await fetch(GAS_URL + '?payload=' + payload, { redirect: 'follow' });
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    console.error('GET also failed:', e.message);
+    return { success: false, error: 'Cannot connect to server. Please check: 1) Your GAS URL in config.js is correct. 2) Apps Script is deployed with "Anyone" access. 3) You clicked Authorize when deploying.' };
   }
 }
 
@@ -2811,7 +2832,7 @@ function showGasSetup(){
 // ============================================================
 window.addEventListener('DOMContentLoaded',()=>{
   checkExistingSession();
-  if(GAS_URL === 'YOUR_GAS_URL_HERE'){
+  if(GAS_URL === 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec'){
     console.info('AquaTrack: Running in DEMO mode. Click "Connect Database" to use real data.');
     // Add subtle connect button to topbar for admins
     const demoBar = document.createElement('div');
