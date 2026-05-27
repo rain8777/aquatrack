@@ -423,27 +423,6 @@ input,select,textarea{font-family:var(--font);outline:none}
   </div>
 </div>
 
-<!-- ===== SETUP CONFIG MODAL ===== -->
-<div class="modal-overlay" id="setupModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">⚙️ Connect to Database</div>
-    </div>
-    <div style="background:var(--blue-light);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;font-size:14px;color:var(--blue-dark)">
-      <strong>First-time setup:</strong> Paste your Google Apps Script URL below to connect AquaTrack to your Google Sheets database.
-    </div>
-    <div class="form-group">
-      <label class="form-label">Google Apps Script URL</label>
-      <input class="form-input" type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/XXXXX/exec"/>
-      <div class="form-hint">Get this from: Apps Script → Deploy → Manage Deployments → Copy Web App URL</div>
-    </div>
-    <div id="setupAlert" class="alert" style="display:none"></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px" onclick="saveGasUrl()">Connect & Save</button>
-    <button class="btn btn-outline" style="width:100%;justify-content:center;margin-top:10px;padding:12px" onclick="closeModal('setupModal')">Use Demo Mode Instead</button>
-    <p style="font-size:12px;color:var(--gray4);text-align:center;margin-top:12px">📖 See SETUP_GUIDE.md for full instructions on how to get this URL</p>
-  </div>
-</div>
-
 <!-- ===== AUTH MODAL ===== -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal">
@@ -1005,9 +984,9 @@ input,select,textarea{font-family:var(--font);outline:none}
 // Priority: 1) window.AQUATRACK_GAS_URL (from config.js / injected)
 //           2) localStorage (user manually entered)
 //           3) Demo mode
-const GAS_URL = (typeof window !== 'undefined' && window.AQUATRACK_GAS_URL && window.AQUATRACK_GAS_URL !== 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec' ? window.AQUATRACK_GAS_URL : null)
+const GAS_URL = (typeof window !== 'undefined' && window.AQUATRACK_GAS_URL && window.AQUATRACK_GAS_URL !== 'YOUR_GAS_URL_HERE' ? window.AQUATRACK_GAS_URL : null)
   || localStorage.getItem('aquatrack_gas_url')
-  || 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec';
+  || 'YOUR_GAS_URL_HERE';
 
 // ============================================================
 // SUPER ADMIN CONFIG
@@ -1040,7 +1019,7 @@ let chatInterval = null;
 async function api(action, body = {}) {
   const token = localStorage.getItem('aquatrack_token');
   try {
-    if (!GAS_URL || GAS_URL === 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec') {
+    if (!GAS_URL || GAS_URL === 'YOUR_GAS_URL_HERE') {
       return mockAPI(action, body);
     }
     const payload = JSON.stringify({ action, token, ...body });
@@ -2809,38 +2788,13 @@ async function checkExistingSession(){
   // In production: verify token via API call
 }
 
-// ============================================================
-// GAS URL SETUP
-// ============================================================
-function saveGasUrl(){
-  const url = document.getElementById('gasUrlInput').value.trim();
-  if(!url || !url.startsWith('https://script.google.com')){
-    showAlert('setupAlert','error','Please enter a valid Google Apps Script URL.');
-    return;
-  }
-  localStorage.setItem('aquatrack_gas_url', url);
-  closeModal('setupModal');
-  location.reload();
-}
 
-function showGasSetup(){
-  openModal('setupModal');
-}
 
 // ============================================================
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded',()=>{
   checkExistingSession();
-  if(GAS_URL === 'https://script.google.com/macros/s/AKfycbwSgKC9vHQpTjXxbSzopERtxUHRJK5jOacasZat5kHR0eT0yzLOIMopTLm5XjPgeehG/exec'){
-    console.info('AquaTrack: Running in DEMO mode. Click "Connect Database" to use real data.');
-    // Add subtle connect button to topbar for admins
-    const demoBar = document.createElement('div');
-    demoBar.style.cssText='background:#fff3e0;color:#e65100;font-size:12px;font-weight:700;text-align:center;padding:6px;cursor:pointer;';
-    demoBar.innerHTML='🟡 DEMO MODE — <u>Click here to connect your Google Sheets database</u>';
-    demoBar.onclick=()=>openModal('setupModal');
-    document.querySelector('.app').insertBefore(demoBar, document.querySelector('.topbar').nextSibling);
-  }
 });
 </script>
 </body>
