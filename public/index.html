@@ -1040,19 +1040,23 @@ let chatInterval = null;
 async function api(action, body = {}) {
   const token = localStorage.getItem('aquatrack_token');
   try {
-    if (GAS_URL === 'YOUR_GAS_URL_HERE') {
-      // DEMO MODE - return mock data
+    if (!GAS_URL || GAS_URL === 'YOUR_GAS_URL_HERE') {
       return mockAPI(action, body);
     }
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({action, token, ...body}),
-      mode: 'cors'
-    });
-    return await res.json();
+    const payload = encodeURIComponent(JSON.stringify({action, token, ...body}));
+    const url = GAS_URL + '?payload=' + payload;
+    const res = await fetch(url, {redirect: 'follow'});
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch(e) {
+      console.error('GAS response not JSON:', text.substring(0, 200));
+      return {success: false, error: 'Invalid response from server. Please redeploy your Apps Script.'};
+    }
   } catch(e) {
-    return {success:false, error:'Connection failed. Please check your internet.'};
+    console.error('API error:', e);
+    return {success: false, error: 'Connection failed. Check your GAS URL in config.js and make sure it is deployed as Anyone can access.'};
   }
 }
 
