@@ -990,12 +990,9 @@ const GAS_URL = (typeof window !== 'undefined' && window.AQUATRACK_GAS_URL && wi
 
 // ============================================================
 // SUPER ADMIN CONFIG
-// Change these credentials to your own!
+// Stored server-side in Google Apps Script Script Properties.
+// Client-side super admin auth only works when GAS backend is configured.
 // ============================================================
-const SUPER_ADMIN = {
-  email: 'Busiliggilbert@gmail.com',
-  password: 'Pandesal1!'
-};
 
 // ============================================================
 // STATE
@@ -1018,45 +1015,32 @@ let chatInterval = null;
 // ============================================================
 async function api(action, body = {}) {
   const token = localStorage.getItem('aquatrack_token');
-  try {
-    if (!GAS_URL || GAS_URL === 'YOUR_GAS_URL_HERE') {
-      return mockAPI(action, body);
-    }
-    const payload = JSON.stringify({ action, token, ...body });
+  if (!GAS_URL || GAS_URL === 'YOUR_GAS_URL_HERE') {
+    return mockAPI(action, body);
+  }
+  const payload = JSON.stringify({ action, token, ...body });
 
-    // Use fetch with no-cors is not possible for reading response.
-    // Google Apps Script requires a GET with payload param OR a POST.
-    // We use POST with Content-Type text/plain to avoid CORS preflight.
+  // Try POST with text/plain to avoid CORS preflight (required by GAS).
+  // If it fails or returns non-JSON, fall back to GET (some GAS deployments require it).
+  try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: payload,
       redirect: 'follow'
     });
-
     const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch(e) {
-      console.error('GAS response not JSON:', text.substring(0, 300));
-      // Fallback: try GET method
-      return await apiGET(action, body, token);
-    }
-  } catch(e) {
-    console.error('POST failed, trying GET:', e.message);
-    return await apiGET(action, body, token);
-  }
-}
+    try { return JSON.parse(text); } catch(e) {}
+  } catch(e) {}
 
-async function apiGET(action, body, token) {
+  // Fallback: try GET method
   try {
-    const payload = encodeURIComponent(JSON.stringify({ action, token, ...body }));
-    const res = await fetch(GAS_URL + '?payload=' + payload, { redirect: 'follow' });
+    const getPayload = encodeURIComponent(payload);
+    const res = await fetch(GAS_URL + '?payload=' + getPayload, { redirect: 'follow' });
     const text = await res.text();
     return JSON.parse(text);
   } catch(e) {
-    console.error('GET also failed:', e.message);
-    return { success: false, error: 'Cannot connect to server. Please check: 1) Your GAS URL in config.js is correct. 2) Apps Script is deployed with "Anyone" access. 3) You clicked Authorize when deploying.' };
+    return { success: false, error: 'Cannot connect to server. Check your GAS URL in config.js and ensure the Apps Script is deployed with "Anyone" access.' };
   }
 }
 
@@ -1092,10 +1076,13 @@ function mockAPI(action, body) {
 
   switch(action){
     case 'login':{
-      // Super admin check (client-side only for demo)
-      if(body.email===SUPER_ADMIN.email&&body.password===SUPER_ADMIN.password){
+      // Super admin check — only used in demo/mock mode.
+      // In production, super admin auth happens server-side via Google Apps Script.
+      const mockAdminEmail = 'admin@aquatrack.local';
+      const mockAdminPassword = 'admin123';
+      if(body.email===mockAdminEmail&&body.password===mockAdminPassword){
         localStorage.setItem('aquatrack_token','demo-admin-token');
-        return {success:true,token:'demo-admin-token',role:'superadmin',user:{id:'admin',name:'Super Admin',email:SUPER_ADMIN.email}};
+        return {success:true,token:'demo-admin-token',role:'superadmin',user:{id:'admin',name:'Super Admin',email:mockAdminEmail}};
       }
       if(body.email==='owner@demo.com'&&body.password==='demo'){
         const owner=DEMO.owners[0];
@@ -1209,6 +1196,9 @@ function mockAPI(action, body) {
       const inactive=result.filter(x=>x.daysSince>=threshold).sort((a,b)=>b.daysSince-a.daysSince);
       const allWithActivity=result.sort((a,b)=>a.daysSince-b.daysSince);
       return {success:true,inactive,all:allWithActivity,threshold};
+    }
+    case 'getOwners':{
+      return {success:true,owners:DEMO.owners.filter(x=>x.approved===true||x.approved==='true').map(x=>({id:x.id,businessName:x.businessName,address:x.address}))};
     }
     case 'getAllStationsForCustomer':{
       const approved=DEMO.owners.filter(x=>x.approved===true||x.approved==='true');
@@ -1331,12 +1321,14 @@ function showAlert(id,type,msg){
 
 async function loadOwnersList(){
   const sel=document.getElementById('custOwnerSelect');
-  sel.innerHTML='<option value="">-- Loading... --</option>';
-  // In production, this would fetch from GAS with ?action=getOwners
-  // For demo, use mock
-  const owners=[{id:'owner1',businessName:"Juan's Water Station",address:'123 Main St, QC'}];
+  sel.innerHTML='<option value="">-- Loading stations... --</option>';
+  const res = await api('getOwners');
+  let owners = res.success && res.owners ? res.owners : [];
+  if (!owners.length) {
+    owners=[{id:'owner1',businessName:"Juan's Water Station",address:'123 Main St, QC'}];
+  }
   sel.innerHTML='<option value="">-- Select your water station --</option>';
-  owners.forEach(o=>{sel.innerHTML+=`<option value="${o.id}">${o.businessName} - ${o.address}</option>`});
+  owners.forEach(o=>{sel.innerHTML+=`<option value="${o.id}">${escHtml(o.businessName)} - ${escHtml(o.address)}</option>`});
 }
 
 function updateTopbar(){
@@ -1475,10 +1467,10 @@ async function loadOwnerCustomers(){
     pending.forEach(cu=>{
       const meta=[cu.phone,cu.email].filter(x=>x&&!x.includes('@aquatrack.local')).join(' · ')||'No contact info';
       html+=`<div class="customer-item" style="background:#fff3e0">
-        <div class="avatar" style="background:var(--orange)">${cu.name[0].toUpperCase()}</div>
+        <div class="avatar" style="background:var(--orange)">${escHtml(cu.name[0].toUpperCase())}</div>
         <div class="customer-info">
-          <div class="customer-name">${cu.name}</div>
-          <div class="customer-meta">${meta}</div>
+          <div class="customer-name">${escHtml(cu.name)}</div>
+          <div class="customer-meta">${escHtml(meta)}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
           <button class="btn btn-green btn-sm" onclick="approveCustomer('${cu.id}')">✓ Approve</button>
@@ -1492,10 +1484,10 @@ async function loadOwnerCustomers(){
     active.forEach(cu=>{
       const meta=[cu.phone,cu.locationLabel?'📍'+cu.locationLabel:'No location set'].filter(Boolean).join(' · ');
       html+=`<div class="customer-item">
-        <div class="avatar">${cu.name[0].toUpperCase()}</div>
+        <div class="avatar">${escHtml(cu.name[0].toUpperCase())}</div>
         <div class="customer-info">
-          <div class="customer-name">${cu.name}</div>
-          <div class="customer-meta">${meta}</div>
+          <div class="customer-name">${escHtml(cu.name)}</div>
+          <div class="customer-meta">${escHtml(meta)}</div>
         </div>
         <button class="btn btn-red btn-sm" onclick="rejectCustomer('${cu.id}')" title="Remove customer">✗</button>
       </div>`;
@@ -1650,12 +1642,11 @@ function startOwnerNav(lat,lng,name){
   }
   _liveNavActive=true;
   if(_ownerWatchId) navigator.geolocation.clearWatch(_ownerWatchId);
-  _ownerWatchId=navigator.geolocation.watchPosition(pos=>{
-    const myLat=pos.coords.latitude, myLng=pos.coords.longitude;
-    updateOwnerNavigation(myLat,myLng);
-  },{enableHighAccuracy:true,maximumAge:3000,timeout:10000},err=>{
-    document.getElementById('ownerNavStatus').textContent='Could not get location: '+err.message;
-  });
+  _ownerWatchId=navigator.geolocation.watchPosition(
+    pos=>{updateOwnerNavigation(pos.coords.latitude,pos.coords.longitude);},
+    err=>{document.getElementById('ownerNavStatus').textContent='Could not get location: '+err.message;},
+    {enableHighAccuracy:true,maximumAge:3000,timeout:10000}
+  );
 }
 
 function updateOwnerNavigation(myLat,myLng){
@@ -1761,11 +1752,11 @@ async function refreshOwnerMap(filter){
     });
     const m=L.marker([Number(cu.lat),Number(cu.lng)],{icon}).addTo(ownerMapInstance);
     m.bindPopup(`<div style="min-width:180px;font-family:sans-serif">
-      <div style="font-weight:800;font-size:14px;margin-bottom:4px">${cu.name}</div>
-      <div style="font-size:12px;color:#666;margin-bottom:2px">${cu.locationLabel||'No label set'}</div>
-      ${cu.phone?`<div style="font-size:12px;color:#666;margin-bottom:8px">${cu.phone}</div>`:''}
+      <div style="font-weight:800;font-size:14px;margin-bottom:4px">${escHtml(cu.name)}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:2px">${escHtml(cu.locationLabel||'No label set')}</div>
+      ${cu.phone?`<div style="font-size:12px;color:#666;margin-bottom:8px">${escHtml(cu.phone)}</div>`:''}
       ${isReq?`<div style="color:#d32f2f;font-weight:700;font-size:12px;margin-bottom:8px">Requesting: ${cu.order.containers} containers · ₱${Number(cu.order.totalAmount).toLocaleString()}</div>`:''}
-      <button onclick="startOwnerNav(${Number(cu.lat)},${Number(cu.lng)},'${cu.name.replace(/'/g,'')}')" style="width:100%;padding:7px;background:#1a6fc4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;margin-bottom:6px">Navigate Here</button>
+      <button onclick="startOwnerNav(${Number(cu.lat)},${Number(cu.lng)},'${cu.name.replace(/'/g,'').replace(/</g,'')}')" style="width:100%;padding:7px;background:#1a6fc4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;margin-bottom:6px">Navigate Here</button>
       ${isReq?`<button onclick="ownerDeliverOrder('${cu.order.id}')" style="width:100%;padding:7px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px">Mark Delivered</button>`:''}
     </div>`,{maxWidth:220});
     ownerMarkers.push(m);
@@ -1774,7 +1765,7 @@ async function refreshOwnerMap(filter){
     if(isReq){
       cards.push(`<div class="order-card" style="border-color:var(--red)">
         <div class="order-top">
-          <div><div style="font-weight:800;font-size:15px">${cu.name}</div><div style="font-size:12px;color:var(--gray4)">${cu.locationLabel||''}</div></div>
+          <div><div style="font-weight:800;font-size:15px">${escHtml(cu.name)}</div><div style="font-size:12px;color:var(--gray4)">${escHtml(cu.locationLabel||'')}</div></div>
           <span class="${cu.order.urgency==='urgent'?'tag-urgent':'tag-normal'}">${cu.order.urgency==='urgent'?'URGENT':'Normal'}</span>
         </div>
         <div class="order-details" style="margin-bottom:12px">
@@ -1812,7 +1803,7 @@ async function loadOwnerOrders(){
   orders.forEach(o=>{
     html+=`<div class="order-card">
       <div class="order-top">
-        <div><div style="font-weight:800">${o.customerName}</div><div class="order-id">${new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div>
+        <div><div style="font-weight:800">${escHtml(o.customerName)}</div><div class="order-id">${new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div></div>
         <div class="order-amount">₱${Number(o.totalAmount).toLocaleString()}</div>
       </div>
       <div class="order-details">
@@ -1913,6 +1904,7 @@ function openOwnerChat(orderId,customerName){
   loadChatMessages(orderId);
   if(chatInterval)clearInterval(chatInterval);
   chatInterval=setInterval(()=>loadChatMessages(orderId),5000);
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&chatInterval){clearInterval(chatInterval);chatInterval=null;}else if(!document.hidden&&activeOrderId&&!chatInterval){chatInterval=setInterval(()=>loadChatMessages(activeOrderId),5000);}});
 }
 
 async function loadChatMessages(orderId){
@@ -2267,7 +2259,7 @@ function renderQueue(){
     html += `<div class="queue-item ${isUrgent?'urgent-item':''}" id="qitem-${o.id}">
       <div class="queue-num ${isUrgent?'urgent':''}">${i+1}</div>
       <div class="queue-info">
-        <div class="queue-name">${o.customerName} ${isUrgent?'<span class="tag-urgent" style="font-size:10px">URGENT</span>':''}</div>
+        <div class="queue-name">${escHtml(o.customerName)} ${isUrgent?'<span class="tag-urgent" style="font-size:10px">URGENT</span>':''}</div>
         <div class="queue-meta">📦 ${o.containers} containers &nbsp;·&nbsp; 💰 ₱${Number(o.totalAmount).toLocaleString()} &nbsp;·&nbsp; ⏰ ${timeAgo(o.createdAt)}</div>
       </div>
       <div class="queue-actions">
@@ -2352,10 +2344,10 @@ async function loadOwnerInactive(){
       const color = cu.daysSince>=60?'var(--red)':cu.daysSince>=30?'var(--orange)':'var(--green)';
       html += `<div class="customer-item" style="background:#fffdf6;border:1.5px solid var(--orange-light);margin-bottom:8px;flex-direction:column;align-items:flex-start;gap:6px">
         <div style="display:flex;align-items:center;gap:12px;width:100%">
-          <div class="avatar" style="background:var(--orange)">${cu.name[0].toUpperCase()}</div>
+          <div class="avatar" style="background:var(--orange)">${escHtml(cu.name[0].toUpperCase())}</div>
           <div class="customer-info">
-            <div class="customer-name">${cu.name}</div>
-            <div class="customer-meta">${cu.phone||'No phone'}</div>
+            <div class="customer-name">${escHtml(cu.name)}</div>
+            <div class="customer-meta">${escHtml(cu.phone||'No phone')}</div>
           </div>
           <span class="inactive-badge">${cu.daysSince===999?'Never ordered':cu.daysSince+'d ago'}</span>
         </div>
@@ -2379,10 +2371,10 @@ async function loadOwnerInactive(){
       const color = cu.daysSince>=30?'var(--red)':cu.daysSince>=14?'var(--orange)':'var(--green)';
       const label = cu.daysSince===999?'Never':cu.daysSince===0?'Today':cu.daysSince+'d ago';
       html += `<div class="customer-item" style="margin-bottom:8px">
-        <div class="avatar" style="background:${color}">${cu.name[0].toUpperCase()}</div>
+        <div class="avatar" style="background:${color}">${escHtml(cu.name[0].toUpperCase())}</div>
         <div class="customer-info">
-          <div class="customer-name">${cu.name}</div>
-          <div class="customer-meta">${cu.phone||'No phone'} · Last: ${cu.lastDelivered?new Date(cu.lastDelivered).toLocaleDateString('en-PH',{month:'short',day:'numeric'}):'Never'}</div>
+          <div class="customer-name">${escHtml(cu.name)}</div>
+          <div class="customer-meta">${escHtml(cu.phone||'No phone')} · Last: ${cu.lastDelivered?new Date(cu.lastDelivered).toLocaleDateString('en-PH',{month:'short',day:'numeric'}):'Never'}</div>
         </div>
         <span style="font-size:12px;font-weight:800;color:${color};flex-shrink:0">${label}</span>
       </div>`;
@@ -2577,8 +2569,8 @@ async function loadChooseStation(){
     html += `<div class="card" style="margin-bottom:12px;${isCurrent?'border-color:var(--teal);background:var(--teal-light)':''}">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
         <div style="min-width:0">
-          <div style="font-weight:800;font-size:15px">${s.businessName}</div>
-          <div style="font-size:13px;color:var(--gray4);margin-top:2px">📍 ${s.address||'—'}</div>
+          <div style="font-weight:800;font-size:15px">${escHtml(s.businessName)}</div>
+          <div style="font-size:13px;color:var(--gray4);margin-top:2px">📍 ${escHtml(s.address||'—')}</div>
           <div style="font-size:13px;font-weight:700;color:var(--teal);margin-top:2px">₱${s.pricePerContainer} per container</div>
         </div>
         ${isCurrent
@@ -2697,9 +2689,9 @@ async function loadAdminOwners(filter='all'){
     return `<div class="card" style="margin-bottom:12px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px">
         <div style="min-width:0">
-          <div style="font-weight:800;font-size:15px;margin-bottom:2px">${o.businessName}</div>
-          <div style="font-size:13px;color:var(--gray4)">${o.name} · ${o.email}</div>
-          <div style="font-size:12px;color:var(--gray4);margin-top:2px">📍 ${o.address||'—'} · 📞 ${o.phone||'—'}</div>
+          <div style="font-weight:800;font-size:15px;margin-bottom:2px">${escHtml(o.businessName)}</div>
+          <div style="font-size:13px;color:var(--gray4)">${escHtml(o.name)} · ${escHtml(o.email)}</div>
+          <div style="font-size:12px;color:var(--gray4);margin-top:2px">📍 ${escHtml(o.address||'—')} · 📞 ${escHtml(o.phone||'—')}</div>
           <div style="font-size:12px;color:var(--gray4)">Registered: ${registered}</div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
@@ -2775,7 +2767,7 @@ async function checkExistingSession(){
   const token=localStorage.getItem('aquatrack_token');
   if(!token)return;
   if(token==='demo-admin-token'){
-    currentUser={id:'admin',name:'Super Admin',email:SUPER_ADMIN.email};
+    currentUser={id:'admin',name:'Super Admin',email:'admin@aquatrack.local'};
     currentRole='superadmin';updateTopbar();enterAdminDashboard();
   } else if(token==='demo-owner-token'){
     const daysLeft=10;
