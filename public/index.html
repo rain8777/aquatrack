@@ -856,8 +856,8 @@ input,select,textarea{font-family:var(--font);outline:none}
         <button onclick="doLogout()" style="background:rgba(255,255,255,.12);color:#fff;font-size:13px;padding:8px 12px;border-radius:8px;border:none;cursor:pointer">Sign Out</button>
       </div>
     </div>
-    <div id="adminContent" style="flex:1;display:flex;flex-direction:column">
-      <div class="loading"><div class="spinner"></div>Loading...</div>
+    <div id="adminContent" class="dashboard-body" style="padding-bottom:72px;box-sizing:border-box">
+      <div class="loading"><div class="spinner"></div>Loading dashboard...</div>
     </div>
     <div class="bottom-nav show">
       <div class="nav-items">
@@ -872,6 +872,18 @@ input,select,textarea{font-family:var(--font);outline:none}
         <button class="nav-item" id="anav-pending" onclick="adminTab('pending')">
           <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Pending
+        </button>
+        <button class="nav-item" id="anav-customers" onclick="adminTab('customers')">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Customers
+        </button>
+        <button class="nav-item" id="anav-orders" onclick="adminTab('orders')">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Orders
+        </button>
+        <button class="nav-item" id="anav-logout" onclick="doLogout()">
+          <svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
         </button>
       </div>
     </div>
@@ -1440,7 +1452,7 @@ async function loadOwnersList(){
 function updateTopbar(){
   const ta=document.getElementById('topbarActions');
   if(currentUser){
-    ta.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--gray5);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${currentUser.name||'User'}</span>`;
+    ta.innerHTML=`<span style="font-size:13px;font-weight:700;color:var(--gray5);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${currentUser.name||'User'}</span><button onclick="doLogout()" style="background:transparent;border:none;font-size:12px;font-weight:700;color:var(--gray4);cursor:pointer;font-family:var(--font);padding:6px 10px;display:flex;align-items:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>`;
   } else {
     ta.innerHTML=`<button onclick="showPage('about')" style="background:transparent;border:none;font-size:13px;font-weight:700;color:var(--gray5);cursor:pointer;font-family:var(--font);padding:6px 8px">About</button><button class="btn btn-outline btn-sm" onclick="openModal('loginModal')">Sign In</button><button class="btn btn-primary btn-sm" onclick="openModal('loginModal','owner')">Try Free</button>`;
   }
@@ -1475,6 +1487,9 @@ function ownerTab(tab){
   _ownerTab=tab;
   document.querySelectorAll('[id^="onav-"]').forEach(b=>{
     b.classList.toggle('active',b.id==='onav-'+tab);
+  });
+  document.querySelectorAll('[id^="snav-"]').forEach(b=>{
+    b.classList.toggle('active',b.id==='snav-'+tab);
   });
   // Stop live navigation when leaving map tab
   if(_ownerTab !== 'map' && tab !== 'map' && _liveNavActive) stopOwnerNav();
@@ -1533,6 +1548,9 @@ async function loadOwnerCustomers(){
     <div class="tab" id="ctab-inactive" onclick="ownerCustomersSubTab('inactive')">😴 Inactive</div>
   </div>
   <div id="customerListPane">
+  <div class="form-group" style="margin-bottom:8px">
+    <input class="form-input" type="text" id="custSearchInput" placeholder="🔍 Search customers by name..." oninput="filterCustomerList()" style="padding:10px 14px;font-size:14px"/>
+  </div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
     <div class="section-label" style="margin:0">Manage Customers</div>
     <button class="btn btn-primary btn-sm" onclick="showAddCustomerForm()">+ Add Customer</button>
@@ -1570,38 +1588,48 @@ async function loadOwnerCustomers(){
 
   if(pending.length){
     html+=`<div class="section-label" style="margin-top:16px">Waiting for Approval (${pending.length})</div>`;
-    pending.forEach(cu=>{
-      const meta=[cu.phone,cu.email].filter(x=>x&&!x.includes('@aquatrack.local')).join(' · ')||'No contact info';
-      html+=`<div class="customer-item" style="background:#fff3e0">
-        <div class="avatar" style="background:var(--orange)">${escHtml(cu.name[0].toUpperCase())}</div>
-        <div class="customer-info">
-          <div class="customer-name">${escHtml(cu.name)}</div>
-          <div class="customer-meta">${escHtml(meta)}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="btn btn-green btn-sm" onclick="approveCustomer('${cu.id}')">✓ Approve</button>
-          <button class="btn btn-red btn-sm" onclick="rejectCustomer('${cu.id}')">✗ Remove</button>
-        </div>
-      </div>`;
-    });
+      pending.forEach(cu=>{
+        const meta=[cu.phone,cu.email].filter(x=>x&&!x.includes('@aquatrack.local')).join(' · ')||'No contact info';
+        html+=`<div class="customer-item" style="background:#fff3e0" data-customer-name="${escHtml(cu.name).toLowerCase()}">
+          <div class="avatar" style="background:var(--orange)">${escHtml(cu.name[0].toUpperCase())}</div>
+          <div class="customer-info">
+            <div class="customer-name">${escHtml(cu.name)}</div>
+            <div class="customer-meta">${escHtml(meta)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-green btn-sm" onclick="approveCustomer('${cu.id}')">✓ Approve</button>
+            <button class="btn btn-red btn-sm" onclick="rejectCustomer('${cu.id}')">✗ Remove</button>
+          </div>
+        </div>`;
+      });
   }
   if(active.length){
     html+=`<div class="section-label" style="margin-top:16px">Active Customers (${active.length})</div>`;
-    active.forEach(cu=>{
-      const meta=[cu.phone,cu.locationLabel?'📍'+cu.locationLabel:'No location set'].filter(Boolean).join(' · ');
-      html+=`<div class="customer-item">
-        <div class="avatar">${escHtml(cu.name[0].toUpperCase())}</div>
-        <div class="customer-info">
-          <div class="customer-name">${escHtml(cu.name)}</div>
-          <div class="customer-meta">${escHtml(meta)}</div>
-        </div>
-        <button class="btn btn-red btn-sm" onclick="rejectCustomer('${cu.id}')" title="Remove customer">✗</button>
-      </div>`;
-    });
+      active.forEach(cu=>{
+        const meta=[cu.phone,cu.locationLabel?'📍'+cu.locationLabel:'No location set'].filter(Boolean).join(' · ');
+        html+=`<div class="customer-item" data-customer-name="${escHtml(cu.name).toLowerCase()}">
+          <div class="avatar">${escHtml(cu.name[0].toUpperCase())}</div>
+          <div class="customer-info">
+            <div class="customer-name">${escHtml(cu.name)}</div>
+            <div class="customer-meta">${escHtml(meta)}</div>
+          </div>
+          <button class="btn btn-red btn-sm" onclick="rejectCustomer('${cu.id}')" title="Remove customer">✗</button>
+        </div>`;
+      });
   }
   if(!customers.length) html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers yet</div><div class="empty-sub">Click "+ Add Customer" above to add your first customer!</div></div>`;
   html+='</div></div></div>';  // close customerListPane + outer div
   c.innerHTML=html;
+}
+
+function filterCustomerList(){
+  const q=document.getElementById('custSearchInput');
+  if(!q)return;
+  const val=q.value.trim().toLowerCase();
+  document.querySelectorAll('#customerListPane .customer-item').forEach(el=>{
+    const name=(el.getAttribute('data-customer-name')||'');
+    el.style.display=!val||name.includes(val)?'':'none';
+  });
 }
 
 function ownerCustomersSubTab(tab){
@@ -1718,9 +1746,15 @@ async function loadOwnerMap(){
     if(ownerMapInstance){ownerMapInstance.remove();ownerMapInstance=null;}
     if(_ownerWatchId){navigator.geolocation.clearWatch(_ownerWatchId);_ownerWatchId=null;}
     _liveNavActive=false; _ownerRouteLine=null; _ownerLocationMarker=null;
-    ownerMapInstance=L.map('ownerMap').setView([14.676,121.044],14);
+    ownerMapInstance=L.map('ownerMap').setView([14.676,121.044],13);
     _ownerTileLayer=L.tileLayer(TILES.street.url,{attribution:TILES.street.attr}).addTo(ownerMapInstance);
     refreshOwnerMap('all');
+    // Try to center map on user's current location
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        ownerMapInstance.setView([pos.coords.latitude,pos.coords.longitude],15);
+      },null,{enableHighAccuracy:true,timeout:8000,maximumAge:60000});
+    }
   },100);
 }
 
@@ -2060,6 +2094,7 @@ let _custTab='order';
 function custTab(tab){
   _custTab=tab;
   document.querySelectorAll('[id^="cnav-"]').forEach(b=>b.classList.toggle('active',b.id==='cnav-'+tab));
+  document.querySelectorAll('[id^="scnav-"]').forEach(b=>b.classList.toggle('active',b.id==='scnav-'+tab));
   if(tab==='order') loadCustOrder();
   else if(tab==='stats') loadCustStats();
   else if(tab==='location') loadCustLocation();
@@ -2226,6 +2261,13 @@ async function loadCustLocation(){
     custMapInstance=L.map('customerMap').setView(center,zoom);
     _custMapLayer='street';
     _custMapTileLayer=L.tileLayer(TILES.street.url,{attribution:TILES.street.attr,maxZoom:19}).addTo(custMapInstance);
+
+    // Try to auto-detect user's GPS and center there
+    if(!newLat && navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        custMapInstance.setView([pos.coords.latitude,pos.coords.longitude],17);
+      },null,{enableHighAccuracy:true,timeout:8000,maximumAge:60000});
+    }
 
     // Custom pin marker
     const pinIcon=L.divIcon({
@@ -2756,49 +2798,68 @@ function adminTab(tab){
 }
 
 async function loadAdminDashboard(){
+  const c=document.getElementById('adminContent');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading dashboard...</div>';
   try {
-    const c=document.getElementById('adminContent');
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading dashboard...</div></div>';
     const res=await api('adminGetDashboard');
-    if(!res.success){c.innerHTML='<div class="empty-state" style="max-width:900px;margin:0 auto;width:100%"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div><div class="empty-sub">Try refreshing or check your connection.</div></div>';return;}
     const d=res.dashboard || {};
 
-    let html=`<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box;padding-top:16px">
+    // Safely get numbers
+    const n = (v,def=0) => { const x=Number(v); return isNaN(x)?def:x; };
+    const totalStations = n(d.totalStations);
+    const totalCustomers = n(d.totalCustomers);
+    const totalOrders = n(d.totalOrders);
+    const totalRevenue = n(d.totalRevenue);
+    const approved = n(d.approved);
+    const pendingApprovals = n(d.pendingApprovals);
+    const locked = n(d.locked);
+    const expired = n(d.expired);
+    const todayOrders = n(d.todayOrders);
+    const todayRevenue = n(d.todayRevenue);
+    const pendingOrders = n(d.pendingOrders);
+    const deliveredOrders = n(d.deliveredOrders);
+
+    let html=`<div style="padding-top:16px">
       <div class="section-label">System Overview</div>
       <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-label">Water Stations</div><div class="stat-value">${d.totalStations}</div></div>
-        <div class="stat-card"><div class="stat-label">Total Customers</div><div class="stat-value">${d.totalCustomers}</div></div>
-        <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value">${d.totalOrders}</div></div>
-        <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">₱${Number(d.totalRevenue).toLocaleString()}</div></div>
+        <div class="stat-card"><div class="stat-label">Water Stations</div><div class="stat-value">${totalStations}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Customers</div><div class="stat-value">${totalCustomers}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Orders</div><div class="stat-value">${totalOrders}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">₱${totalRevenue.toLocaleString()}</div></div>
       </div>
 
-      <div class="section-label">System Status</div>
+      <div class="section-label">Station Status</div>
       <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-label">✅ Active</div><div class="stat-value" style="color:var(--green)">${d.approved}</div></div>
-        <div class="stat-card"><div class="stat-label">⏳ Pending Approval</div><div class="stat-value" style="color:var(--orange)">${d.pendingApprovals}</div></div>
-        <div class="stat-card"><div class="stat-label">🔒 Locked</div><div class="stat-value" style="color:var(--red)">${d.locked}</div></div>
-        <div class="stat-card"><div class="stat-label">⌛ Expired Trial</div><div class="stat-value" style="color:var(--red)">${d.expired}</div></div>
+        <div class="stat-card"><div class="stat-label">✅ Active</div><div class="stat-value" style="color:var(--green)">${approved}</div></div>
+        <div class="stat-card"><div class="stat-label">⏳ Pending Approval</div><div class="stat-value" style="color:var(--orange)">${pendingApprovals}</div></div>
+        <div class="stat-card"><div class="stat-label">🔒 Locked</div><div class="stat-value" style="color:var(--red)">${locked}</div></div>
+        <div class="stat-card"><div class="stat-label">⌛ Expired Trial</div><div class="stat-value" style="color:var(--red)">${expired}</div></div>
       </div>
 
       <div class="section-label">Today's Activity</div>
       <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-label">Orders Today</div><div class="stat-value">${d.todayOrders}</div></div>
-        <div class="stat-card"><div class="stat-label">Revenue Today</div><div class="stat-value">₱${Number(d.todayRevenue).toLocaleString()}</div></div>
-        <div class="stat-card"><div class="stat-label">Pending Orders</div><div class="stat-value" style="color:var(--orange)">${d.pendingOrders}</div></div>
-        <div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--green)">${d.deliveredOrders}</div></div>
+        <div class="stat-card"><div class="stat-label">Orders Today</div><div class="stat-value">${todayOrders}</div></div>
+        <div class="stat-card"><div class="stat-label">Revenue Today</div><div class="stat-value">₱${todayRevenue.toLocaleString()}</div></div>
+        <div class="stat-card"><div class="stat-label">Pending Orders</div><div class="stat-value" style="color:${pendingOrders>0?'var(--orange)':'var(--green)'}">${pendingOrders}</div></div>
+        <div class="stat-card"><div class="stat-label">Delivered</div><div class="stat-value" style="color:var(--green)">${deliveredOrders}</div></div>
       </div>`;
 
     // Revenue chart (last 7 days)
-    if(d.weeklyLabels&&d.weeklyLabels.length){
-      const maxRev=Math.max(...d.weeklyRevenue,1);
+    const wLabels = d.weeklyLabels || [];
+    const wRevenue = d.weeklyRevenue || [];
+    if(wLabels.length){
+      const maxRev = Math.max(...wRevenue, 1);
       html+=`<div class="section-label">Revenue (Last 7 Days)</div>
       <div class="card" style="padding:16px;margin-bottom:20px">
         <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding:0 4px">`;
-      d.weeklyLabels.forEach((label,i)=>{
-        const h=Math.max(4,(d.weeklyRevenue[i]/maxRev)*100);
+      wLabels.forEach((label,i)=>{
+        const rev = n(wRevenue[i]);
+        const h = Math.max(4, (rev/maxRev)*100);
         html+=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="font-size:11px;font-weight:700;color:var(--gray4)">₱${d.weeklyRevenue[i]}</div>
-          <div style="width:100%;background:var(--blue-light);border-radius:4px 4px 0 0;height:${h}%;min-height:4px;transition:height .3s"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--gray4)">₱${rev}</div>
+          <div style="width:100%;background:${rev>0?'var(--blue-light)':'var(--gray2)'};border-radius:4px 4px 0 0;height:${h}%;min-height:4px;transition:height .3s"></div>
           <div style="font-size:10px;color:var(--gray4)">${label}</div>
         </div>`;
       });
@@ -2806,13 +2867,14 @@ async function loadAdminDashboard(){
     }
 
     // Recent registrations
-    if(d.recentRegistrations&&d.recentRegistrations.length){
-      html+=`<div class="section-label">Recent Station Registrations (${d.recentRegistrations.length})</div>
+    const recentRegs = d.recentRegistrations || [];
+    if(recentRegs.length){
+      html+=`<div class="section-label">Recent Station Registrations (${recentRegs.length})</div>
       <div class="card" style="padding:12px;margin-bottom:20px">`;
-      (d.recentRegistrations || []).forEach(r=>{
+      recentRegs.forEach(r=>{
         const date=formatDateSafe(r.createdAt,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px">
-          <div><strong>${escHtml(r.businessName)}</strong><div style="font-size:12px;color:var(--gray4)">${escHtml(r.email)}</div></div>
+          <div><strong>${escHtml(r.businessName||'Unknown')}</strong><div style="font-size:12px;color:var(--gray4)">${escHtml(r.email||'')}</div></div>
           <div style="text-align:right"><span style="font-size:12px;color:var(--gray4)">${date}</span><br><span class="${r.approved?'badge badge-active':'badge badge-pending'}" style="font-size:10px">${r.approved?'Approved':'Pending'}</span></div>
         </div>`;
       });
@@ -2820,33 +2882,36 @@ async function loadAdminDashboard(){
     }
 
     // Customers per station
-    if(d.customersPerStation&&d.customersPerStation.length){
+    const perStation = d.customersPerStation || [];
+    if(perStation.length){
       html+=`<div class="section-label">Customers per Station</div>
       <div class="card" style="padding:12px;margin-bottom:20px">`;
-      d.customersPerStation.forEach(s=>{
+      perStation.forEach(s=>{
+        const count = n(s.customerCount);
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px">
-          <div><strong>${escHtml(s.businessName)}</strong></div>
-          <div><span style="font-weight:800;color:var(--blue)">${s.customerCount}</span> customer${s.customerCount===1?'':'s'}</div>
+          <div><strong>${escHtml(s.businessName||'Unknown')}</strong></div>
+          <div><span style="font-weight:800;color:var(--blue)">${count}</span> customer${count===1?'':'s'}</div>
         </div>`;
       });
       html+=`</div>`;
     }
 
     // Recent orders
-    if(d.recentOrders&&d.recentOrders.length){
+    const recentOrd = d.recentOrders || [];
+    if(recentOrd.length){
       html+=`<div class="section-label">Recent Orders</div>
       <div class="card" style="padding:12px;margin-bottom:20px">`;
-      (d.recentOrders || []).forEach(o=>{
+      recentOrd.forEach(o=>{
         const date=formatDateSafe(o.createdAt,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         const statusClass=o.status==='delivered'?'badge badge-active':o.status==='pending'?'badge badge-pending':'badge';
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px">
           <div>
             <strong>${escHtml(o.customerName||'Unknown')}</strong>
-            <div style="font-size:12px;color:var(--gray4)">${escHtml(o.stationName)} · ${o.containers} container${o.containers===1?'':'s'}</div>
+            <div style="font-size:12px;color:var(--gray4)">${escHtml(o.stationName||'')} · ${n(o.containers)} container${n(o.containers)===1?'':'s'}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-weight:700">₱${Number(o.totalAmount||0).toLocaleString()}</div>
-            <span class="${statusClass}" style="font-size:10px">${o.status}</span>
+            <div style="font-weight:700">₱${n(o.totalAmount).toLocaleString()}</div>
+            <span class="${statusClass}" style="font-size:10px">${o.status||'unknown'}</span>
             <div style="font-size:10px;color:var(--gray4)">${date}</div>
           </div>
         </div>`;
@@ -2854,41 +2919,42 @@ async function loadAdminDashboard(){
       html+=`</div>`;
     }
 
+    // If there's no data at all, show a friendly message
+    if(!totalStations && !totalCustomers && !totalOrders){
+      html+=`<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">System is ready, waiting for first registrations</div><div class="empty-sub">Water stations and customers will appear here once they sign up.</div></div>`;
+    }
+
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    const c=document.getElementById('adminContent');
-    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading dashboard</div><div class="empty-sub">'+escHtml(e.message||'Unknown error')+'</div></div>';
   }
 }
 
 async function loadAdminCustomers(){
+  const c=document.getElementById('adminContent');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading customers...</div>';
   try {
-    const c=document.getElementById('adminContent');
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading customers...</div></div>';
     const res=await api('adminGetCustomers');
-    if(!res.success){c.innerHTML='<div class="empty-state" style="max-width:900px;margin:0 auto;width:100%"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
-    const customers=res.customers;
-    let html=`<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box;padding-top:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="section-label" style="margin-bottom:0">All Customers (${customers.length})</div>
-      </div>`;
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
+    const customers=res.customers||[];
+    let html=`<div style="padding-top:16px">
+      <div class="section-label">All Customers (${customers.length})</div>`;
     if(!customers.length){
-      html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers registered yet</div></div>`;
+      html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers registered yet</div><div class="empty-sub">Customers appear here once they sign up through a water station.</div></div>`;
     } else {
-      (customers || []).forEach(cu=>{
+      customers.forEach(cu=>{
         const approved=cu.approved===true||cu.approved==='true'||cu.approved==='TRUE';
-        const lastDate=cu.lastDelivered?formatDateSafe(cu.lastDelivered,{month:'short',day:'numeric'}):'Never';
         html+=`<div class="card" style="margin-bottom:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div>
-              <div style="font-weight:800;font-size:14px;margin-bottom:2px">${escHtml(cu.name)}</div>
-              <div style="font-size:12px;color:var(--gray4)">${escHtml(cu.email)} · ${escHtml(cu.phone||'—')}</div>
+              <div style="font-weight:800;font-size:14px;margin-bottom:2px">${escHtml(cu.name||'Unknown')}</div>
+              <div style="font-size:12px;color:var(--gray4)">${escHtml(cu.email||'')} · ${escHtml(cu.phone||'—')}</div>
               <div style="font-size:12px;color:var(--gray4)">Station: <strong>${escHtml(cu.stationName||'Unknown')}</strong></div>
             </div>
             <div style="text-align:right;flex-shrink:0">
               <span class="${approved?'badge badge-active':'badge badge-pending'}" style="font-size:10px">${approved?'Approved':'Pending'}</span>
-              <div style="font-size:11px;color:var(--gray4);margin-top:4px">Last: ${lastDate}</div>
             </div>
           </div>
         </div>`;
@@ -2897,24 +2963,22 @@ async function loadAdminCustomers(){
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    const c=document.getElementById('adminContent');
-    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading customers</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
 async function loadAdminOrders(){
+  const c=document.getElementById('adminContent');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading orders...</div>';
   try {
-    const c=document.getElementById('adminContent');
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading orders...</div></div>';
     const res=await api('adminGetOrders');
-    if(!res.success){c.innerHTML='<div class="empty-state" style="max-width:900px;margin:0 auto;width:100%"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
-    const orders=res.orders;
-    let html=`<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box;padding-top:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="section-label" style="margin-bottom:0">All Orders (${orders.length})</div>
-      </div>`;
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
+    const orders=res.orders||[];
+    let html=`<div style="padding-top:16px">
+      <div class="section-label">All Orders (${orders.length})</div>`;
     if(!orders.length){
-      html+=`<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">No orders yet</div></div>`;
+      html+=`<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">No orders yet</div><div class="empty-sub">Orders appear here once customers start placing requests.</div></div>`;
     } else {
       [...orders].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).forEach(o=>{
         const date=formatDateSafe(o.createdAt,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -2938,19 +3002,19 @@ async function loadAdminOrders(){
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    const c=document.getElementById('adminContent');
-    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading orders</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
 async function loadAdminOwners(filter='all'){
+  const c=document.getElementById('adminContent');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading stations...</div>';
   try {
-    const c=document.getElementById('adminContent');
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading stations...</div></div>';
     const res=await api('adminGetOwners');
-    if(!res.success){c.innerHTML='<div class="empty-state" style="max-width:900px;margin:0 auto;width:100%"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
 
-    let owners=res.owners;
+    let owners=res.owners||[];
   if(filter==='pending') owners=owners.filter(o=>!o.approved);
   const now=new Date();
 
@@ -2966,7 +3030,7 @@ async function loadAdminOwners(filter='all'){
   const expired=owners.filter(o=>o._expired);
   const locked=owners.filter(o=>o.approved&&o.locked);
 
-  let html=`<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box;padding-top:16px">`;
+  let html=`<div style="padding-top:16px">`;
 
   // Summary stats
   html+=`<div class="stats-grid" style="margin-bottom:20px">
@@ -2992,8 +3056,8 @@ async function loadAdminOwners(filter='all'){
     return `<div class="card" style="margin-bottom:12px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px">
         <div style="min-width:0">
-          <div style="font-weight:800;font-size:15px;margin-bottom:2px">${escHtml(o.businessName)}</div>
-          <div style="font-size:13px;color:var(--gray4)">${escHtml(o.name)} · ${escHtml(o.email)}</div>
+          <div style="font-weight:800;font-size:15px;margin-bottom:2px">${escHtml(o.businessName||'')}</div>
+          <div style="font-size:13px;color:var(--gray4)">${escHtml(o.name||'')} · ${escHtml(o.email||'')}</div>
           <div style="font-size:12px;color:var(--gray4);margin-top:2px">📍 ${escHtml(o.address||'—')} · 📞 ${escHtml(o.phone||'—')}</div>
           <div style="font-size:12px;color:var(--gray4)">Registered: ${registered}</div>
         </div>
@@ -3029,12 +3093,11 @@ async function loadAdminOwners(filter='all'){
     html+=`<div class="section-label" style="margin-top:20px">✅ Active Stations (${active.length})</div>`;
     active.forEach(o=>{html+=ownerCard(o);});
   }
-  if(!owners.length) html+=`<div class="empty-state"><div class="empty-icon">🏪</div><div class="empty-text">No stations registered yet</div></div>`;
+  if(!owners.length) html+=`<div class="empty-state"><div class="empty-icon">🏪</div><div class="empty-text">No stations registered yet</div><div class="empty-sub">New registrations appear here once water station owners sign up.</div></div>`;
   html+='</div>';
   c.innerHTML=html;
   } catch(e) {
-    const c=document.getElementById('adminContent');
-    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading stations</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
