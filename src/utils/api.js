@@ -5,15 +5,18 @@ const GAS_URL = process.env.NEXT_PUBLIC_GAS_URL;
 
 async function callAPI(action, body = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('aquatrack_token') : null;
+  if (!GAS_URL) {
+    return { success: false, error: 'API URL is not configured.' };
+  }
   try {
     const res = await fetch(GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action, token, ...body }),
-      mode: 'cors'
+      redirect: 'follow'
     });
-    const data = await res.json();
-    return data;
+    const text = await res.text();
+    return JSON.parse(text);
   } catch (err) {
     return { success: false, error: 'Network error. Please check your connection.' };
   }

@@ -1839,8 +1839,8 @@ async function refreshOwnerMap(filter){
       <div style="font-size:12px;color:#666;margin-bottom:2px">${escHtml(cu.locationLabel||'No label set')}</div>
       ${cu.phone?`<div style="font-size:12px;color:#666;margin-bottom:8px">${escHtml(cu.phone)}</div>`:''}
       ${isReq?`<div style="color:#d32f2f;font-weight:700;font-size:12px;margin-bottom:8px">Requesting: ${cu.order.containers} containers · ₱${Number(cu.order.totalAmount).toLocaleString()}</div>`:''}
-      <button onclick="startOwnerNav(${Number(cu.lat)},${Number(cu.lng)},'${cu.name.replace(/'/g,'').replace(/</g,'')}')" style="width:100%;padding:7px;background:#1a6fc4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;margin-bottom:6px">Navigate Here</button>
-      ${isReq?`<button onclick="ownerDeliverOrder('${cu.order.id}')" style="width:100%;padding:7px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px">Mark Delivered</button>`:''}
+      <button onclick="startOwnerNav(${Number(cu.lat)},${Number(cu.lng)},'${escJs(cu.name)}')" style="width:100%;padding:7px;background:#1a6fc4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px;margin-bottom:6px">Navigate Here</button>
+      ${isReq?`<button onclick="ownerDeliverOrder('${escJs(cu.order.id)}')" style="width:100%;padding:7px;background:#2e7d32;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:700;font-size:13px">Mark Delivered</button>`:''}
     </div>`,{maxWidth:220});
     ownerMarkers.push(m);
     bounds.push([Number(cu.lat),Number(cu.lng)]);
@@ -1856,8 +1856,8 @@ async function refreshOwnerMap(filter){
           <div class="order-field"><div class="order-field-label">Amount</div><div class="order-field-value">₱${Number(cu.order.totalAmount).toLocaleString()}</div></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="ownerDeliverOrder('${cu.order.id}')">✅ Done - Mark Delivered</button>
-          <button class="btn btn-outline btn-sm" onclick="openOwnerChat('${cu.order.id}','${cu.name}')">💬 Chat</button>
+          <button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="ownerDeliverOrder('${escJs(cu.order.id)}')">✅ Done - Mark Delivered</button>
+          <button class="btn btn-outline btn-sm" onclick="openOwnerChat('${escJs(cu.order.id)}','${escJs(cu.name)}')">💬 Chat</button>
         </div>
       </div>`);
     }
@@ -1895,7 +1895,7 @@ async function loadOwnerOrders(){
         <div class="order-field"><div class="order-field-label">Status</div><div class="order-field-value" style="color:${statusColors[o.status]||'var(--gray4)'}">${o.status.charAt(0).toUpperCase()+o.status.slice(1)}</div></div>
         <div class="order-field"><div class="order-field-label">Phone</div><div class="order-field-value">${o.customerPhone||'—'}</div></div>
       </div>
-      ${o.status==='pending'?`<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-green btn-sm" onclick="ownerDeliverOrder('${o.id}')">Mark Delivered</button><button class="btn btn-outline btn-sm" onclick="openOwnerChat('${o.id}','${o.customerName}')">💬 Chat</button></div>`:''}
+      ${o.status==='pending'?`<div style="margin-top:10px;display:flex;gap:8px"><button class="btn btn-green btn-sm" onclick="ownerDeliverOrder('${escJs(o.id)}')">Mark Delivered</button><button class="btn btn-outline btn-sm" onclick="openOwnerChat('${escJs(o.id)}','${escJs(o.customerName)}')">💬 Chat</button></div>`:''}
     </div>`;
   });
   html+='</div>';
@@ -1934,8 +1934,8 @@ async function loadOwnerSettings(){
 
   <div class="card">
     <div class="card-title">Station Info</div>
-    <div class="price-row"><div style="font-weight:600">Business Name</div><div style="font-size:14px;color:var(--gray5)">${u.businessName}</div></div>
-    <div class="price-row"><div style="font-weight:600">Owner</div><div style="font-size:14px;color:var(--gray5)">${u.name}</div></div>
+    <div class="price-row"><div style="font-weight:600">Business Name</div><div style="font-size:14px;color:var(--gray5)">${escHtml(u.businessName)}</div></div>
+    <div class="price-row"><div style="font-weight:600">Owner</div><div style="font-size:14px;color:var(--gray5)">${escHtml(u.name)}</div></div>
     <div class="price-row"><div style="font-weight:600">Phone</div><div style="font-size:14px;color:var(--gray5)">${u.phone}</div></div>
     <div class="price-row"><div style="font-weight:600">Address</div><div style="font-size:14px;color:var(--gray5)">${u.address}</div></div>
   </div>
@@ -1972,8 +1972,8 @@ function openOwnerChat(orderId,customerName){
   const c=document.getElementById('ownerContent');
   c.innerHTML=`<div style="margin-top:16px">
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-    <button class="btn btn-outline btn-sm" onclick="ownerTab('orders')">← Back</button>
-    <div style="font-weight:800;font-size:16px">Chat with ${customerName}</div>
+    <button class="btn btn-outline btn-sm" onclick="ownerTab('${escJs(_ownerTab || 'dash')}')">← Back</button>
+    <div style="font-weight:800;font-size:16px">Chat with ${escHtml(customerName)}</div>
   </div>
   <div class="chat-box" id="chatBox">
     <div class="chat-messages" id="chatMessages"><div class="loading"><div class="spinner"></div></div></div>
@@ -1998,7 +1998,7 @@ async function loadChatMessages(orderId){
   container.innerHTML=res.messages.map(m=>{
     const isMine=m.senderRole==='owner';
     return `<div class="chat-msg ${isMine?'mine':'theirs'}">
-      <div class="chat-sender">${m.senderName}</div>
+      <div class="chat-sender">${escHtml(m.senderName)}</div>
       <div class="chat-bubble">${escHtml(m.message)}</div>
     </div>`;
   }).join('')||'<div style="text-align:center;color:var(--gray4);font-size:13px;padding:20px">No messages yet. Say hello! 👋</div>';
@@ -2014,7 +2014,8 @@ async function sendChatMsg(){
   loadChatMessages(activeOrderId);
 }
 
-function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escHtml(s){return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');}
+function escJs(s){return String(s ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r/g,'\\r').replace(/\n/g,'\\n').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'\\x3C');}
 
 // ============================================================
 // CUSTOMER DASHBOARD
@@ -2078,7 +2079,7 @@ async function loadCustOrder(){
   c.innerHTML=`<div style="margin-top:16px">
   <div class="request-form">
     <div style="font-family:var(--font-head);font-size:18px;font-weight:800;margin-bottom:4px">Request Water Refill</div>
-    <div style="font-size:13px;color:var(--gray4);margin-bottom:16px">Station: ${custOwnerInfo?custOwnerInfo.businessName:'Your Station'}</div>
+    <div style="font-size:13px;color:var(--gray4);margin-bottom:16px">Station: ${escHtml(custOwnerInfo?custOwnerInfo.businessName:'Your Station')}</div>
 
     <div class="form-label" style="margin-bottom:8px">How many containers?</div>
     <div class="qty-control">
@@ -2117,7 +2118,7 @@ async function loadCustOrder(){
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:14px">${custOwnerInfo?custOwnerInfo.businessName:'Your Station'}</div>
+        <div style="font-weight:700;font-size:14px">${escHtml(custOwnerInfo?custOwnerInfo.businessName:'Your Station')}</div>
         <div style="font-size:12px;color:var(--gray4);margin-top:2px">Your current water station</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
@@ -2346,10 +2347,10 @@ function renderQueue(){
         <div class="queue-meta">📦 ${o.containers} containers &nbsp;·&nbsp; 💰 ₱${Number(o.totalAmount).toLocaleString()} &nbsp;·&nbsp; ⏰ ${timeAgo(o.createdAt)}</div>
       </div>
       <div class="queue-actions">
-        <button class="queue-btn" onclick="queueMove('${o.id}',-1)" ${i===0?'disabled':''} title="Move up">▲</button>
-        <button class="queue-btn" onclick="queueMove('${o.id}',1)" ${i===_queueData.length-1?'disabled':''} title="Move down">▼</button>
-        <button class="queue-btn" onclick="openOwnerChat('${o.id}','${o.customerName}')" title="Chat" style="font-size:14px">💬</button>
-        <button class="queue-btn" onclick="queueDeliver('${o.id}')" title="Mark Delivered" style="background:var(--green-light);border-color:var(--green);color:var(--green);font-size:14px">✅</button>
+        <button class="queue-btn" onclick="queueMove('${escJs(o.id)}',-1)" ${i===0?'disabled':''} title="Move up">▲</button>
+        <button class="queue-btn" onclick="queueMove('${escJs(o.id)}',1)" ${i===_queueData.length-1?'disabled':''} title="Move down">▼</button>
+        <button class="queue-btn" onclick="openOwnerChat('${escJs(o.id)}','${escJs(o.customerName)}')" title="Chat" style="font-size:14px">💬</button>
+        <button class="queue-btn" onclick="queueDeliver('${escJs(o.id)}')" title="Mark Delivered" style="background:var(--green-light);border-color:var(--green);color:var(--green);font-size:14px">✅</button>
       </div>
     </div>`;
   });
@@ -2530,7 +2531,7 @@ function renderCustStats(){
   // Station chips HTML
   const stationChips = `<div class="station-chips">
     <button class="station-chip ${_statsStation==='all'?'active':''}" onclick="statFilterStation('all')">🏪 All Stations</button>
-    ${_statsStations.map(s=>`<button class="station-chip ${_statsStation===s.id?'active':''}" onclick="statFilterStation('${s.id}')">${s.businessName}</button>`).join('')}
+    ${_statsStations.map(s=>`<button class="station-chip ${_statsStation===s.id?'active':''}" onclick="statFilterStation('${escJs(s.id)}')">${escHtml(s.businessName)}</button>`).join('')}
   </div>`;
 
   // Period breakdown for bar chart
@@ -2579,7 +2580,7 @@ function renderCustStats(){
     const pct = totalContainers>0?Math.round(sCont/totalContainers*100):0;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray2)">
       <div style="flex:1">
-        <div style="font-weight:700;font-size:14px">${s.businessName}</div>
+        <div style="font-weight:700;font-size:14px">${escHtml(s.businessName)}</div>
         <div style="font-size:12px;color:var(--gray4)">${sCont} containers · ₱${sCost.toLocaleString()}</div>
         <div style="height:6px;background:var(--gray2);border-radius:3px;margin-top:6px"><div style="height:100%;width:${pct}%;background:var(--teal);border-radius:3px"></div></div>
       </div>
@@ -2616,7 +2617,7 @@ function renderCustStats(){
   ${filtered.length?`<div class="section-label">Recent Orders</div>`:''}
   ${filtered.slice(0,10).map(o=>`<div class="order-card">
     <div class="order-top">
-      <div><div style="font-weight:800;font-size:13px">${o.stationName||'Station'}</div><div class="order-id">${new Date(o.deliveredAt||o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</div></div>
+      <div><div style="font-weight:800;font-size:13px">${escHtml(o.stationName||'Station')}</div><div class="order-id">${new Date(o.deliveredAt||o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</div></div>
       <div style="font-family:var(--font-head);font-size:18px;font-weight:900;color:var(--teal)">₱${Number(o.totalAmount).toLocaleString()}</div>
     </div>
     <div class="order-details">
@@ -2658,7 +2659,7 @@ async function loadChooseStation(){
         </div>
         ${isCurrent
           ?`<span class="badge badge-active" style="flex-shrink:0">✅ Current</span>`
-          :`<button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="doSwitchStation('${s.id}','${s.businessName}')">Switch Here</button>`}
+          :`<button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="doSwitchStation('${escJs(s.id)}','${escJs(s.businessName)}')">Switch Here</button>`}
       </div>
     </div>`;
   });
