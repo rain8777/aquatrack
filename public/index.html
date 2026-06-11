@@ -274,8 +274,8 @@ input,select,textarea{font-family:var(--font);outline:none}
 
   /* App shell: topbar stays, content gets sidebar */
   .page#page-owner,
-  .page#page-customer,
-  .page#page-admin{flex-direction:row;align-items:stretch;min-height:calc(100vh - 64px)}
+  .page#page-customer{flex-direction:row;align-items:stretch;min-height:calc(100vh - 64px)}
+  .page#page-admin{flex-direction:column;align-items:stretch;min-height:calc(100vh - 64px)}
 
   /* Sidebar */
   .desktop-sidebar{display:flex !important;flex-direction:column;width:220px;min-width:220px;background:var(--white);border-right:1.5px solid var(--gray2);padding:24px 0;gap:4px;position:sticky;top:64px;height:calc(100vh - 64px);overflow-y:auto;flex-shrink:0}
@@ -2630,7 +2630,10 @@ function openCustChat(orderId){
 // ============================================================
 function enterAdminDashboard(){
   showPage('admin');
-  adminTab('owners');
+  try { adminTab('owners'); } catch(e) {
+    const c=document.getElementById('adminContent');
+    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+  }
 }
 
 let _adminTab='owners';
@@ -2642,12 +2645,13 @@ function adminTab(tab){
 }
 
 async function loadAdminOwners(filter='all'){
-  const c=document.getElementById('adminContent');
-  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading stations...</div>';
-  const res=await api('adminGetOwners');
-  if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
+  try {
+    const c=document.getElementById('adminContent');
+    c.innerHTML='<div class="loading"><div class="spinner"></div>Loading stations...</div>';
+    const res=await api('adminGetOwners');
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
 
-  let owners=res.owners;
+    let owners=res.owners;
   if(filter==='pending') owners=owners.filter(o=>!o.approved);
   const now=new Date();
 
@@ -2729,6 +2733,10 @@ async function loadAdminOwners(filter='all'){
   if(!owners.length) html+=`<div class="empty-state"><div class="empty-icon">🏪</div><div class="empty-text">No stations registered yet</div></div>`;
   html+='</div>';
   c.innerHTML=html;
+  } catch(e) {
+    const c=document.getElementById('adminContent');
+    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
+  }
 }
 
 async function adminApproveOwner(id){
