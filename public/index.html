@@ -2629,7 +2629,7 @@ function openCustChat(orderId){
 // SUPER ADMIN PANEL
 // ============================================================
 function enterAdminDashboard(){
-  showPage('admin');
+  try { showPage('admin'); } catch(e) { alert('showPage error: '+e.message); }
   try { adminTab('owners'); } catch(e) {
     const c=document.getElementById('adminContent');
     if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
