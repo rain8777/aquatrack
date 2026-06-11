@@ -275,7 +275,7 @@ input,select,textarea{font-family:var(--font);outline:none}
   /* App shell: topbar stays, content gets sidebar */
   .page#page-owner,
   .page#page-customer{flex-direction:row;align-items:stretch;min-height:calc(100vh - 64px)}
-  .page#page-admin{flex-direction:column;align-items:stretch;min-height:calc(100vh - 64px)}
+  .page#page-admin{flex-direction:column;align-items:stretch;height:calc(100vh - 64px)}
 
   /* Sidebar */
   .desktop-sidebar{display:flex !important;flex-direction:column;width:220px;min-width:220px;background:var(--white);border-right:1.5px solid var(--gray2);padding:24px 0;gap:4px;position:sticky;top:64px;height:calc(100vh - 64px);overflow-y:auto;flex-shrink:0}
@@ -812,11 +812,11 @@ input,select,textarea{font-family:var(--font);outline:none}
       <button onclick="doLogout()" style="background:rgba(255,255,255,.12);color:#fff;font-size:13px;padding:8px 12px;border-radius:8px;border:none;cursor:pointer">Sign Out</button>
     </div>
   </div>
-
-  <div style="max-width:900px;margin:0 auto;padding:0 16px 20px" id="adminContent">
-    <div class="loading"><div class="spinner"></div>Loading...</div>
+  <div style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column">
+    <div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box" id="adminContent">
+      <div class="loading"><div class="spinner"></div>Loading...</div>
+    </div>
   </div>
-
   <div class="bottom-nav show">
     <div class="nav-items">
       <button class="nav-item active" id="anav-owners" onclick="adminTab('owners')">
