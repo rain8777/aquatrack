@@ -1025,6 +1025,29 @@ input,select,textarea{font-family:var(--font);outline:none}
 </div><!-- end .app -->
 
 <script>
+// Date and Time Formatting Helpers (prevent RangeError: Invalid time value crashes)
+function formatDateSafe(dateVal, formatOptions = { month: 'short', day: 'numeric', year: 'numeric' }, locales = 'en-PH') {
+  if (!dateVal) return '—';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '—';
+  try {
+    return d.toLocaleDateString(locales, formatOptions);
+  } catch(e) {
+    return d.toLocaleDateString() || '—';
+  }
+}
+
+function formatTimeSafe(dateVal, formatOptions = { hour: '2-digit', minute: '2-digit' }, locales = 'en-PH') {
+  if (!dateVal) return '—';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '—';
+  try {
+    return d.toLocaleTimeString(locales, formatOptions);
+  } catch(e) {
+    return d.toLocaleTimeString() || '—';
+  }
+}
+
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -2294,7 +2317,7 @@ async function loadCustHistory(){
   orders.forEach(o=>{
     html+=`<div class="order-card">
       <div class="order-top">
-        <div><div style="font-weight:800">${new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</div><div class="order-id">${new Date(o.createdAt).toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'})}</div></div>
+        <div><div style="font-weight:800">${formatDateSafe(o.createdAt,{month:'short',day:'numeric',year:'numeric'})}</div><div class="order-id">${formatTimeSafe(o.createdAt,{hour:'2-digit',minute:'2-digit'})}</div></div>
         <div class="order-amount">₱${Number(o.totalAmount).toLocaleString()}</div>
       </div>
       <div class="order-details">
@@ -2437,7 +2460,7 @@ async function loadOwnerInactive(){
         </div>
         <div style="width:100%;padding-left:54px">
           <div class="last-order-bar"><div class="last-order-fill" style="width:${fill}%;background:${color}"></div></div>
-          <div style="font-size:11px;color:var(--gray4);margin-top:3px">Last delivery: ${cu.lastDelivered?new Date(cu.lastDelivered).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'Never'}</div>
+          <div style="font-size:11px;color:var(--gray4);margin-top:3px">Last delivery: ${cu.lastDelivered?formatDateSafe(cu.lastDelivered,{month:'short',day:'numeric',year:'numeric'}):'Never'}</div>
         </div>
       </div>`;
     });
@@ -2458,7 +2481,7 @@ async function loadOwnerInactive(){
         <div class="avatar" style="background:${color}">${escHtml(cu.name[0].toUpperCase())}</div>
         <div class="customer-info">
           <div class="customer-name">${escHtml(cu.name)}</div>
-          <div class="customer-meta">${escHtml(cu.phone||'No phone')} · Last: ${cu.lastDelivered?new Date(cu.lastDelivered).toLocaleDateString('en-PH',{month:'short',day:'numeric'}):'Never'}</div>
+          <div class="customer-meta">${escHtml(cu.phone||'No phone')} · Last: ${cu.lastDelivered?formatDateSafe(cu.lastDelivered,{month:'short',day:'numeric'}):'Never'}</div>
         </div>
         <span style="font-size:12px;font-weight:800;color:${color};flex-shrink:0">${label}</span>
       </div>`;
@@ -2617,7 +2640,7 @@ function renderCustStats(){
   ${filtered.length?`<div class="section-label">Recent Orders</div>`:''}
   ${filtered.slice(0,10).map(o=>`<div class="order-card">
     <div class="order-top">
-      <div><div style="font-weight:800;font-size:13px">${escHtml(o.stationName||'Station')}</div><div class="order-id">${new Date(o.deliveredAt||o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}</div></div>
+      <div><div style="font-weight:800;font-size:13px">${escHtml(o.stationName||'Station')}</div><div class="order-id">${formatDateSafe(o.deliveredAt||o.createdAt,{month:'short',day:'numeric',year:'numeric'})}</div></div>
       <div style="font-family:var(--font-head);font-size:18px;font-weight:900;color:var(--teal)">₱${Number(o.totalAmount).toLocaleString()}</div>
     </div>
     <div class="order-details">
@@ -2738,7 +2761,7 @@ async function loadAdminDashboard(){
     c.innerHTML='<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading dashboard...</div></div>';
     const res=await api('adminGetDashboard');
     if(!res.success){c.innerHTML='<div class="empty-state" style="max-width:900px;margin:0 auto;width:100%"><div class="empty-text">Error: '+res.error+'</div></div>';return;}
-    const d=res.dashboard;
+    const d=res.dashboard || {};
 
     let html=`<div style="max-width:900px;margin:0 auto;padding:0 16px 20px;width:100%;box-sizing:border-box;padding-top:16px">
       <div class="section-label">System Overview</div>
@@ -2786,8 +2809,8 @@ async function loadAdminDashboard(){
     if(d.recentRegistrations&&d.recentRegistrations.length){
       html+=`<div class="section-label">Recent Station Registrations (${d.recentRegistrations.length})</div>
       <div class="card" style="padding:12px;margin-bottom:20px">`;
-      d.recentRegistrations.forEach(r=>{
-        const date=new Date(r.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      (d.recentRegistrations || []).forEach(r=>{
+        const date=formatDateSafe(r.createdAt,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px">
           <div><strong>${escHtml(r.businessName)}</strong><div style="font-size:12px;color:var(--gray4)">${escHtml(r.email)}</div></div>
           <div style="text-align:right"><span style="font-size:12px;color:var(--gray4)">${date}</span><br><span class="${r.approved?'badge badge-active':'badge badge-pending'}" style="font-size:10px">${r.approved?'Approved':'Pending'}</span></div>
@@ -2813,8 +2836,8 @@ async function loadAdminDashboard(){
     if(d.recentOrders&&d.recentOrders.length){
       html+=`<div class="section-label">Recent Orders</div>
       <div class="card" style="padding:12px;margin-bottom:20px">`;
-      d.recentOrders.forEach(o=>{
-        const date=new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      (d.recentOrders || []).forEach(o=>{
+        const date=formatDateSafe(o.createdAt,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
         const statusClass=o.status==='delivered'?'badge badge-active':o.status==='pending'?'badge badge-pending':'badge';
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--gray2);font-size:13px">
           <div>
@@ -2853,9 +2876,9 @@ async function loadAdminCustomers(){
     if(!customers.length){
       html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers registered yet</div></div>`;
     } else {
-      customers.forEach(cu=>{
+      (customers || []).forEach(cu=>{
         const approved=cu.approved===true||cu.approved==='true'||cu.approved==='TRUE';
-        const lastDate=cu.lastDelivered?new Date(cu.lastDelivered).toLocaleDateString('en-PH',{month:'short',day:'numeric'}):'Never';
+        const lastDate=cu.lastDelivered?formatDateSafe(cu.lastDelivered,{month:'short',day:'numeric'}):'Never';
         html+=`<div class="card" style="margin-bottom:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div>
@@ -2893,8 +2916,8 @@ async function loadAdminOrders(){
     if(!orders.length){
       html+=`<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">No orders yet</div></div>`;
     } else {
-      orders.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).forEach(o=>{
-        const date=new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      [...orders].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).forEach(o=>{
+        const date=formatDateSafe(o.createdAt,{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'});
         const statusClass=o.status==='delivered'?'badge badge-active':o.status==='pending'?'badge badge-pending':'badge';
         html+=`<div class="card" style="margin-bottom:10px;padding:12px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -2964,7 +2987,7 @@ async function loadAdminOwners(filter='all'){
     else if(o._expired) statusBadge='<span class="badge" style="background:var(--red-light);color:var(--red)">⌛ Trial Expired</span>';
     else statusBadge='<span class="badge badge-active">✅ Active</span>';
 
-    const registered=o.createdAt?new Date(o.createdAt).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}):'Unknown';
+    const registered=o.createdAt?formatDateSafe(o.createdAt,{month:'short',day:'numeric',year:'numeric'}):'Unknown';
 
     return `<div class="card" style="margin-bottom:12px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px">
@@ -3060,8 +3083,20 @@ async function checkExistingSession(){
   } else if(token==='demo-cust-token'){
     currentUser={id:'cust1',ownerId:'owner1',name:'Maria Santos',email:'cust@demo.com',phone:'09281234567',lat:14.676,lng:121.044,locationLabel:'Home - Tandang Sora',approved:true};
     currentRole='customer';updateTopbar();enterCustomerDashboard();
+  } else {
+    // Production session verification
+    const res = await api('verifySession');
+    if(res.success){
+      currentUser = res.user;
+      currentRole = res.role;
+      updateTopbar();
+      if(res.role==='superadmin') enterAdminDashboard();
+      else if(res.role==='owner') enterOwnerDashboard();
+      else enterCustomerDashboard();
+    } else {
+      localStorage.removeItem('aquatrack_token');
+    }
   }
-  // In production: verify token via API call
 }
 
 
