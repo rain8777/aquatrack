@@ -34,6 +34,8 @@ input,select,textarea{font-family:var(--font);outline:none}
 .page{display:none;flex-direction:column;flex:1}
 .page.active{display:flex}
 #page-admin{overflow-y:auto}
+#adminContent{flex:1;padding-bottom:72px}
+@media(min-width:1024px){#adminContent{padding-bottom:32px}}
 
 /* ===== TOPBAR ===== */
 .topbar{background:var(--white);box-shadow:0 2px 12px rgba(26,111,196,.10);padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
@@ -856,10 +858,8 @@ input,select,textarea{font-family:var(--font);outline:none}
         <button onclick="doLogout()" style="background:rgba(255,255,255,.12);color:#fff;font-size:13px;padding:8px 12px;border-radius:8px;border:none;cursor:pointer">Sign Out</button>
       </div>
     </div>
-    <div id="adminContent" style="flex:1;display:flex;flex-direction:column;padding:0 16px 72px;box-sizing:border-box;margin-top:-40px">
-      <div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box">
-        <div class="loading"><div class="spinner"></div>Loading dashboard...</div>
-      </div>
+    <div id="adminContent" class="dashboard-body">
+      <div class="loading"><div class="spinner"></div>Loading dashboard...</div>
     </div>
     <div class="bottom-nav show">
       <div class="nav-items">
@@ -2783,7 +2783,7 @@ function enterAdminDashboard(){
   try { showPage('admin'); } catch(e) { alert('showPage error: '+e.message); }
   try { adminTab('dashboard'); } catch(e) {
     const c=document.getElementById('adminContent');
-    if(c) c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div></div>';
+    if(c) c.innerHTML='<div class="empty-state"><div class="empty-text">Error: '+e.message+'</div></div>';
   }
 }
 
@@ -2802,10 +2802,10 @@ function adminTab(tab){
 async function loadAdminDashboard(){
   const c=document.getElementById('adminContent');
   if(!c) return;
-  c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading dashboard...</div></div>';
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading dashboard...</div>';
   try {
     const res=await api('adminGetDashboard');
-    if(!res.success){c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div><div class="empty-sub">Try refreshing or check your connection.</div></div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div><div class="empty-sub">Try refreshing or check your connection.</div></div>';return;}
     const d=res.dashboard || {};
 
     const n = (v,def=0) => { const x=Number(v); return isNaN(x)?def:x; };
@@ -2822,7 +2822,7 @@ async function loadAdminDashboard(){
     const pendingOrders = n(d.pendingOrders);
     const deliveredOrders = n(d.deliveredOrders);
 
-    let html=`<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;padding-top:16px">
+    let html=`<div style="padding-top:16px">
       <div class="section-label">System Overview</div>
       <div class="stats-grid" style="margin-bottom:20px">
         <div class="stat-card"><div class="stat-label">Water Stations</div><div class="stat-value">${totalStations}</div></div>
@@ -2923,19 +2923,19 @@ async function loadAdminDashboard(){
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading dashboard</div><div class="empty-sub">'+escHtml(e.message||'Unknown error')+'</div></div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading dashboard</div><div class="empty-sub">'+escHtml(e.message||'Unknown error')+'</div></div>';
   }
 }
 
 async function loadAdminCustomers(){
   const c=document.getElementById('adminContent');
   if(!c) return;
-  c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading customers...</div></div>';
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading customers...</div>';
   try {
     const res=await api('adminGetCustomers');
-    if(!res.success){c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
     const customers=res.customers||[];
-    let html=`<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;padding-top:16px">
+    let html=`<div style="padding-top:16px">
       <div class="section-label">All Customers (${customers.length})</div>`;
     if(!customers.length){
       html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-text">No customers registered yet</div><div class="empty-sub">Customers appear here once they sign up through a water station.</div></div>`;
@@ -2959,19 +2959,19 @@ async function loadAdminCustomers(){
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading customers</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading customers</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
 async function loadAdminOrders(){
   const c=document.getElementById('adminContent');
   if(!c) return;
-  c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading orders...</div></div>';
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading orders...</div>';
   try {
     const res=await api('adminGetOrders');
-    if(!res.success){c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
     const orders=res.orders||[];
-    let html=`<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;padding-top:16px">
+    let html=`<div style="padding-top:16px">
       <div class="section-label">All Orders (${orders.length})</div>`;
     if(!orders.length){
       html+=`<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-text">No orders yet</div><div class="empty-sub">Orders appear here once customers start placing requests.</div></div>`;
@@ -2998,17 +2998,17 @@ async function loadAdminOrders(){
     html+='</div>';
     c.innerHTML=html;
   } catch(e) {
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading orders</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading orders</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
 async function loadAdminOwners(filter='all'){
   const c=document.getElementById('adminContent');
   if(!c) return;
-  c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="loading"><div class="spinner"></div>Loading stations...</div></div>';
+  c.innerHTML='<div class="loading"><div class="spinner"></div>Loading stations...</div>';
   try {
     const res=await api('adminGetOwners');
-    if(!res.success){c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div></div>';return;}
+    if(!res.success){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">'+escHtml(res.error)+'</div></div>';return;}
 
     let owners=res.owners||[];
   if(filter==='pending') owners=owners.filter(o=>!o.approved);
@@ -3026,7 +3026,7 @@ async function loadAdminOwners(filter='all'){
   const expired=owners.filter(o=>o._expired);
   const locked=owners.filter(o=>o.approved&&o.locked);
 
-  let html=`<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box;padding-top:16px">`;
+  let html=`<div style="padding-top:16px">`;
 
   // Summary stats
   html+=`<div class="stats-grid" style="margin-bottom:20px">
@@ -3093,7 +3093,7 @@ async function loadAdminOwners(filter='all'){
   html+='</div>';
   c.innerHTML=html;
   } catch(e) {
-    c.innerHTML='<div style="max-width:900px;margin:0 auto;width:100%;box-sizing:border-box"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading stations</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div></div>';
+    c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Error loading stations</div><div class="empty-sub">'+escHtml(e.message||'')+'</div></div>';
   }
 }
 
